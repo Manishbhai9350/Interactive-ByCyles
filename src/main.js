@@ -7,7 +7,7 @@ import { BikeData } from "./data";
 document.addEventListener("DOMContentLoaded", () => {
   const main = document.querySelector("main");
 
-  const HtmlPoints = {};
+  const HtmlPoints = [];
 
   // <div class="point">
   // <h1 class="marker">1</h1>
@@ -15,28 +15,82 @@ document.addEventListener("DOMContentLoaded", () => {
   // <p class="label">Pressure-relief gel cushioning.</p>
   // </div>
 
-  let counter = 1;
+  const scene = new THREE.Scene();
 
-  for (const item in BikeData) {
-    const { heading, label } = BikeData[item];
+  const contentBox = document.createElement("div");
+  contentBox.classList.add("point-content");
+
+  contentBox.innerHTML = `
+    <h2 class="heading"></h2>
+    <p class="label"></p>
+  `;
+
+  main.appendChild(contentBox);
+
+  BikeData.forEach((B, i) => {
+    const { heading, label, name } = B;
+
     const pointCon = document.createElement("div");
-    pointCon.classList.add("point", "point-" + counter++);
+    pointCon.classList.add("point", "point-" + (i + 1));
+
+    pointCon.dataset.visible = "false"; // 🔥 important
+
+    if (name == "Seat_Bicycle_0") {
+      pointCon.classList.add("visible");
+      pointCon.dataset.visible = "true";
+    }
+
     pointCon.innerHTML = `
-      <h1 class="marker">${counter}</h1>
-      <div class="dashed-line"></div>
-      <div class="content">
-        <h1 class="heading">${heading}</h1>
-        <p class="label">${label}</p>
-      </div>
+    <h1 class="marker">${i + 1}</h1>
+  `;
+
+    // 🔥 HOVER LOGIC
+    pointCon.addEventListener("mouseenter", () => {
+      if (pointCon.dataset.visible !== "true") return;
+
+      // update content
+      contentBox.querySelector(".heading").textContent =
+        `${(i + 1).toString().padStart(1, "0")} ${heading}`;
+      contentBox.querySelector(".label").textContent = label;
+
+      contentBox.style.opacity = 1;
+
+      // position to right of point
+      const pointConRect = pointCon.getBoundingClientRect();
+      const contentBoxRect = contentBox.getBoundingClientRect();
+
+      let x = pointConRect.right + 10;
+      let y = pointConRect.top;
+      if (Math.abs(x - innerWidth) < contentBoxRect.width) {
+        x -= contentBoxRect.width + 50;
+      }
+
+      if (Math.abs(y - innerHeight) < contentBoxRect.height) {
+        y -= contentBoxRect.height + 10;
+        x = contentBoxRect.width / 2 + 50;
+      }
+
+      contentBox.style.transform = `
+      translate(${x}px, ${y}px)
     `;
+    });
+
+    pointCon.addEventListener("mouseleave", () => {
+      contentBox.style.opacity = 0;
+    });
+
+    HtmlPoints.push({
+      ...B,
+      container: pointCon,
+    });
+
     main.appendChild(pointCon);
-  }
+  });
 
   // --- 1. Scene Setup ---
   const canvas = document.querySelector("canvas.canvas-container");
   canvas.width = innerWidth;
   canvas.height = innerHeight;
-  const scene = new THREE.Scene();
 
   // Set to null so the HTML/CSS background shows behind the model
   scene.background = null;
@@ -48,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     0.1,
     100,
   );
-  camera.position.set(-2, 2, 2); // Adjust based on how large your model is
+  camera.position.set(2, -0.1, -0.04); // Adjust based on how large your model is
 
   // --- 3. Renderer Setup ---
   const renderer = new THREE.WebGLRenderer({
@@ -67,11 +121,34 @@ document.addEventListener("DOMContentLoaded", () => {
   directionalLight.position.set(5, 10, 7);
   scene.add(directionalLight);
 
-  const ExludePoints = ["Bicycle_Bicycle_0"];
-  const Points = [];
+  const loaderEl = document.querySelector(".loader");
+  const bar = document.querySelector(".loader-bar");
+  const text = document.querySelector(".loader-text");
+
+  const LoadManager = new THREE.LoadingManager();
+
+  LoadManager.onProgress = (url, loaded, total) => {
+    const progress = Math.floor((loaded / total) * 100);
+
+    bar.style.width = progress + "%";
+    text.textContent = progress + "%";
+  };
+
+  LoadManager.onLoad = () => {
+    bar.style.width = 100 + "%";
+
+    setTimeout(() => {
+      loaderEl.style.opacity = 0;
+      loaderEl.style.pointerEvents = "none";
+
+      setTimeout(() => {
+        loaderEl.style.display = "none";
+      }, 400);
+    }, 500);
+  };
 
   // --- 5. Model Loading ---
-  const loader = new GLTFLoader();
+  const loader = new GLTFLoader(LoadManager);
   let bikeModel;
 
   // IMPORTANT: Replace with the actual path to your GLTF/GLB file
@@ -79,15 +156,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "/models/bycycle.glb",
     function (gltf) {
       bikeModel = gltf.scene;
-
-      bikeModel.traverse((n) => {
-        if (n.isMesh && ExludePoints.indexOf(n.name) == -1) {
-          Points.push({
-            name: n.name,
-            point: n.position,
-          });
-        }
-      });
 
       // 1. Calculate the bounding box of the model
       const box = new THREE.Box3().setFromObject(bikeModel);
@@ -117,21 +185,47 @@ document.addEventListener("DOMContentLoaded", () => {
     },
   );
 
+  const raycaster = new THREE.Raycaster();
+
   // --- 6. Controls (Optional but recommended for hero sections) ---
   const controls = new OrbitControls(camera, renderer.domElement);
   // controls.enableDamping = true;
   // controls.enableZoom = false; // Prevents page scrolling from zooming the model
   // controls.enablePan = false;  // Keeps the model centered
-
+  const mouse = new THREE.Vector2();
   // --- 7. Animation Loop ---
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
+    // raycaster.setFromCamera()
+
     // --------------------------------------------------------
     // YOUR INTERACTIVITY GOES HERE
     // (e.g., Raycaster updates, HTML hotspot positioning logic)
     // --------------------------------------------------------
+
+    if (bikeModel) {
+      HtmlPoints.forEach((P, i) => {
+        const point = P.point;
+        const wordPos = point.clone();
+        const ndc = wordPos.clone().project(camera);
+        raycaster.setFromCamera(ndc, camera);
+
+        // no need to check the whole scene as there is only bike model there
+        const intersects = raycaster.intersectObject(bikeModel, true);
+        const TX = (ndc.x * innerWidth) / 2;
+        const TY = (-ndc.y * innerHeight) / 2;
+        P.container.style.transform = `translate(-50%,-50%) translate(${TX}px, ${TY}px)`;
+
+        const show =
+          intersects.length === 0 ||
+          intersects[0].distance >= camera.position.distanceTo(wordPos);
+
+        P.container.classList.toggle("visible", show);
+        P.container.dataset.visible = show;
+      });
+    }
 
     renderer.render(scene, camera);
   }
@@ -142,5 +236,23 @@ document.addEventListener("DOMContentLoaded", () => {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+  });
+  window.addEventListener("click", (e) => {
+    return;
+    mouse.x = (e.clientX / innerWidth - 0.5) * 2;
+    mouse.y = -(e.clientY / innerHeight - 0.5) * 2;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    console.log("New Intersect");
+    if (intersects.length) {
+      intersects.forEach((item) => {
+        if (item.object.name !== "ChainExtender_Bicycle_0") return;
+        console.log(item.object.name);
+        console.log(item.point);
+      });
+    }
   });
 });

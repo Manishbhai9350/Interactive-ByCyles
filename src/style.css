@@ -1,12 +1,12 @@
-/* 1. Import Inter Font from Google Fonts */
+/* 🔤 Font */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap");
 
+/* 🌍 Reset */
 * {
-  padding: 0;
   margin: 0;
+  padding: 0;
   box-sizing: border-box;
-  /* Apply Inter globally */
-  font-family: "Inter", Arial, Helvetica, sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 html,
@@ -14,113 +14,162 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  /* Swapped the murky background for a sleek dark neutral to make the bike pop */
-  background-color: #121212;
+  background: #121212;
 }
 
+/* 🧱 Layout */
 main {
   position: relative;
   width: 100vw;
   height: 100vh;
-  /* Optional: A subtle radial gradient gives the 3D scene more depth */
   background: radial-gradient(circle at center, #2a2a2a 0%, #121212 100%);
 }
 
 canvas {
-  width: 100vw;
-  height: 100vh;
   position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1; /* Keep canvas behind UI */
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
-/* The main wrapper - keeps everything in a row aligned to the top */
+
+/* 📍 POINT */
 .point {
   position: absolute;
-  top: calc(50% - 150px);
+  top: 50%;
   left: 50%;
-  display: flex;
-  align-items: flex-start; /* Keeps the marker at the top even if text is long */
-  align-items: center;
   z-index: 10;
-  z-index: 10;
-  height: 300px;
-  width: 300px;
-  /* opacity: 0; */
-  transition: opacity 0.3s ease-in;
-  /* Removed 'gap' because the dashed line now acts as our spacer */
+
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
 .point.visible {
   opacity: 1;
 }
 
-.point.hovered .dashed-line,
-.point.hovered .content {
-  opacity: 1;
-}
-
-/* Part 1: The Clickable Marker */
+/* 🎯 MARKER */
 .marker {
   width: 32px;
   height: 32px;
-  background-color: #ff6b00;
-  color: white;
   border-radius: 50%;
+
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+
+  background: #ff6b00;
+  color: #fff;
+
+  font-size: 0.9rem;
   font-weight: 600;
-  font-size: 1rem;
+
+  border: 1px solid rgba(255,255,255,0.8);
+
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(255, 107, 0, 0.4);
-  flex-shrink: 0;
   pointer-events: auto;
-  cursor: help;
-  opacity: 0;
-  transition: opacity 0.3s ease-in;
+
+  box-shadow: 0 4px 12px rgba(255, 107, 0, 0.4);
+
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Part 2: The Dashed Line */
-.dashed-line {
-  width: 20px;
-  height: 3px;
-  background: rgba(95, 95, 95, 0.6);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease-in;
+.marker:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 18px rgba(255, 107, 0, 0.6);
 }
 
-/* Part 3: The Content Box */
-.content {
-  max-width: 200px;
-  overflow: hidden;
-  background: rgba(15, 15, 15, 0.7);
+/* 🧾 SHARED CONTENT BOX */
+.point-content {
+  position: absolute;
+  z-index: 20;
+
+  min-width: 180px;
+  max-width: 240px;
+
+  padding: 14px 16px;
+
+  background: rgba(15, 15, 15, 0.75);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-  padding: 16px 20px;
+
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+
   pointer-events: none;
   user-select: none;
+
   opacity: 0;
-  transition: opacity 0.3s ease-in;
+  transform: translateY(10px);
+
+  transition: 
+    opacity 0.25s ease,
+    transform 0.25s ease;
 }
 
-.heading {
-  font-size: 1.1rem;
+.point-content.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 📝 TEXT */
+.point-content .heading {
+  font-size: 0.95rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 6px;
+  letter-spacing: 0.8px;
+
   color: #ff6b00;
-  line-height: 1.2;
+  margin-bottom: 6px;
 }
 
-.label {
+.point-content .label {
+  font-size: 0.9rem;
   font-weight: 300;
-  font-size: 0.95rem;
+  line-height: 1.4;
+
   color: rgba(255, 255, 255, 0.85);
-  line-height: 1.5;
+}
+
+.loader {
+  position: fixed;
+  inset: 0;
+  background: #121212;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 999;
+
+  animation: opacity .3s ease-in;
+}
+
+/* track (background line) */
+.loader-track {
+  width: 220px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+/* animated progress line */
+.loader-bar {
+  width: 0%;
+  height: 100%;
+  background: #ff6b00;
+  box-shadow: 0 0 10px rgba(255, 107, 0, 0.6);
+  transition: width 0.3s ease;
+}
+
+/* percentage text */
+.loader-text {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 1px;
 }
